@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },
@@ -12,6 +12,7 @@
     "@babel/parser": "^8.0.10",
     "@babel/traverse": "^8.0.10",
     "@xyflow/react": "^12.12.0",
+    "adm-zip": "^0.6.1",
     "dagre": "^0.8.5",
     "next": "16.4.3",
     "react": "19.3.0",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/adm-zip": "^0.5.8",
     "@types/babel__traverse": "^7.28.0",
     "@types/dagre": "^0.7.54",
     "@types/node": "^24.19.2",

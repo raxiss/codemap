@@ -1,73 +1,113 @@
 "use client";
 
-import * as React from "react";
+import React from "react";
+import { useAnalysisStore } from "@/store/useAnalysisStore";
+import type { AnalysisStage } from "@/types/graph";
 
-export type ProgressStageItem = string | { id?: string; label: string };
-
-export interface ProgressStagesProps {
-  stages: ProgressStageItem[];
-  /** Index of the stage currently in progress. -1 = idle, stages.length = done. */
-  current: number;
-  className?: string;
+interface StageConfig {
+  key: AnalysisStage;
+  label: string;
 }
 
-/**
- * Horizontal stepper used to communicate analysis progress.
- */
-export function ProgressStages({ stages, current, className }: ProgressStagesProps) {
-  const normalized = stages.map((stage, index) => {
-    if (typeof stage === "string") {
-      return { id: String(index), label: stage };
-    }
-    return { id: stage.id ?? String(index), label: stage.label };
-  });
+const STAGES: StageConfig[] = [
+  { key: "fetching-tree", label: "Reading file list" },
+  { key: "fetching-files", label: "Fetching source files" },
+  { key: "parsing", label: "Parsing imports & building graph" },
+  { key: "detecting-cycles", label: "Detecting circular dependencies" },
+];
+
+function getStageStatus(
+  currentStage: AnalysisStage,
+  stageKey: AnalysisStage,
+): "pending" | "active" | "done" {
+  const order: AnalysisStage[] = [
+    "fetching-tree",
+    "fetching-files",
+    "parsing",
+    "detecting-cycles",
+    "done",
+  ];
+
+  const currentIndex = order.indexOf(currentStage);
+  const stageIndex = order.indexOf(stageKey);
+
+  if (currentStage === "done" || currentIndex > stageIndex) {
+    return "done";
+  }
+  if (currentIndex === stageIndex) {
+    return "active";
+  }
+  return "pending";
+}
+
+export function ProgressStages() {
+  const { stage, progress, error } = useAnalysisStore();
+
+  if (stage === "idle") return null;
 
   return (
-    <ol
-      aria-label="Analysis progress"
-      className={["flex flex-col gap-3 sm:flex-row sm:items-center", className ?? ""].join(" ")}
-    >
-      {normalized.map((stage, index) => {
-        const state: "done" | "active" | "pending" =
-          index < current ? "done" : index === current ? "active" : "pending";
-        return (
-          <li key={stage.id} className="flex items-center gap-2 sm:flex-1">
-            <span
-              aria-current={state === "active" ? "step" : undefined}
-              className={[
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                state === "done"
-                  ? "bg-black text-white dark:bg-white dark:text-black"
-                  : state === "active"
-                    ? "border-2 border-black text-black dark:border-white dark:text-white"
-                    : "border border-black/15 text-zinc-400 dark:border-white/15",
-              ].join(" ")}
+    <div className="w-full max-w-lg mx-auto bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-2xl backdrop-blur-md">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium text-slate-200">
+          {stage === "error" ? "Analysis Failed" : "Analyzing Codebase..."}
+        </h3>
+        {progress && (
+          <span className="text-xs font-mono text-cyan-400">
+            {progress.percent}%
+          </span>
+        )}
+      </div>
+
+      {stage !== "error" && (
+        <div className="w-full bg-slate-800 rounded-full h-1.5 mb-5 overflow-hidden">
+          <div
+            className="bg-cyan-400 h-full rounded-full transition-all duration-300 ease-out"
+            style={{ width: `${progress?.percent || 15}%` }}
+          />
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {STAGES.map((s) => {
+          const status = getStageStatus(stage, s.key);
+          return (
+            <div
+              key={s.key}
+              className={`flex items-center gap-3 text-xs transition-colors ${
+                status === "done"
+                  ? "text-slate-300"
+                  : status === "active"
+                  ? "text-cyan-400 font-medium"
+                  : "text-slate-600"
+              }`}
             >
-              {state === "done" ? "✓" : index + 1}
-            </span>
-            <span
-              className={[
-                "text-sm",
-                state === "active"
-                  ? "font-medium text-black dark:text-white"
-                  : state === "done"
-                    ? "text-zinc-600 dark:text-zinc-400"
-                    : "text-zinc-400 dark:text-zinc-600",
-              ].join(" ")}
-            >
-              {stage.label}
-            </span>
-            {index < normalized.length - 1 && (
-              <span
-                aria-hidden="true"
-                className="hidden h-px flex-1 bg-black/10 sm:block dark:bg-white/10"
-              />
-            )}
-          </li>
-        );
-      })}
-    </ol>
+              <div className="w-4 h-4 flex items-center justify-center">
+                {status === "done" ? (
+                  <span className="text-emerald-400 font-bold">✓</span>
+                ) : status === "active" ? (
+                  <div className="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <div className="w-2 h-2 rounded-full bg-slate-700" />
+                )}
+              </div>
+              <span>{s.label}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {progress?.message && stage !== "error" && (
+        <p className="mt-4 pt-3 border-t border-slate-800/80 text-xs text-slate-400 font-mono truncate">
+          {progress.message}
+        </p>
+      )}
+
+      {error && (
+        <div className="mt-4 p-3 bg-red-950/60 border border-red-900/80 rounded-lg text-xs text-red-300 flex items-start gap-2">
+          <span className="text-red-400 font-bold">!</span>
+          <p className="leading-relaxed">{error}</p>
+        </div>
+      )}
+    </div>
   );
 }
-
-export default ProgressStages;
