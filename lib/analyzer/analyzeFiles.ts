@@ -1,0 +1,1 @@
+export { analyzeFiles } from "./analyzeDirectory";
