@@ -1,36 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CodeMap: Visual Source Code Dependency Analyzer
+
+Turn any public GitHub repository into an interactive dependency graph with zero install. CodeMap visualizes file import relationships, flags circular dependencies, and answers the question: **"If I change this file, what else might break?"**
+
+---
+
+## Features
+
+- 🗺️ **Interactive Dependency Graph:** Hierarchical dagre layout rendered via React Flow (`@xyflow/react`) with smooth panning, zooming, and hover highlighting.
+- 💥 **Impact Analysis (Blast Radius):** Breadth-first search traversal across reversed dependency edges to light up all direct and transitive dependents of any selected file.
+- 🔄 **Circular Dependency Detection:** Tarjan's strongly connected components algorithm identifies dependency loops and highlights cycle edges in red.
+- 📂 **Top-Level Folder Grouping:** Color-coded modules (`src/`, `lib/`, `components/`, `utils/`, etc.) for instant architectural orientation.
+- 🔍 **Instant Search:** Fuzzy search by file name with `Cmd+K` keyboard shortcut and match counter.
+- 📊 **Aggregate Stats:** Real-time metrics bar displaying total file count, line count, cycle count, top hub files, and orphan files.
+- 📦 **Dual Ingestion:** Support for both public GitHub repository URLs (with custom branches and `/tree/branch/subdir` scopes) and local ZIP archive uploads.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| **Framework** | Next.js 16 (App Router) + TypeScript |
+| **Styling** | Tailwind CSS v4 |
+| **Graph Visualization** | React Flow (`@xyflow/react`) + Dagre |
+| **State Management** | Zustand v5 |
+| **Parsing** | Regex over comment-stripped source (ES imports, exports, require, dynamic import) |
+| **Testing** | Vitest (57 unit tests) |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- npm or pnpm
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <repo-url>
+cd codemap
+
+# Install dependencies
+npm install
+```
+
+### Environment Variables (Optional)
+
+To raise GitHub API rate limits from 60 requests/hour to 5,000 requests/hour:
+
+```bash
+# .env.local
+GITHUB_TOKEN=your_personal_access_token
+```
+
+### Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Running Tests & Typechecks
 
-## Learn More
+```bash
+# Run Vitest test suite
+npx vitest run
 
-To learn more about Next.js, take a look at the following resources:
+# Run TypeScript type check
+npx tsc --noEmit
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Run ESLint
+npm run lint
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Production build
+npm run build
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Architecture
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+Browser (Next.js App Router + React Flow)
+   │  POST /api/analyze/github  { url, branch? }
+   │  POST /api/analyze/zip     (multipart/form-data)
+   ▼
+Route Handlers (/app/api/analyze/*)
+   ├─ parseGithubUrl     → Validate host, owner, repo, branch, subdir
+   ├─ fetchGithubFiles   → GitHub Trees API + raw file fetches (concurrency = 10)
+   ├─ extractZip         → AdmZip extraction with prefix stripping
+   ├─ rateLimit          → Per-IP sliding window rate limiter
+   ▼
+Analyzer Engine (lib/analyzer/* - Pure TypeScript)
+   ├─ scanFiles          → Filter JS/TS files, ignore node_modules/.git/dist
+   ├─ parseImports       → Detect import, export ... from, require, import()
+   ├─ resolveImport      → Relative path resolution, extension guessing, index fallback
+   ├─ buildGraph         → Nodes with imports & importedBy lists, non-duplicate edges
+   ├─ detectCycles       → Tarjan's SCC algorithm (cycles with > 1 node)
+   ├─ computeImpact      → BFS over reversed edges (blast radius)
+   └─ computeStats       → Totals, most-connected hub, orphans
+   ▼
+AnalysisResult JSON
+   └─ Rendered in interactive GraphCanvas, StatsBar, and InspectorPanel
+```
+
+---
+
+## License
+
+MIT
