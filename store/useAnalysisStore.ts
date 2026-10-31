@@ -19,6 +19,8 @@ export interface AnalysisStore {
   highlightedEdges: Set<string>;
   cycleHighlightNodes: Set<string>;
   cycleHighlightEdges: Set<string>;
+  treeViewMode: "dependency" | "filesystem";
+  treeOrientation: "TB" | "LR";
 
   setStage: (stage: AnalysisStage) => void;
   setProgress: (progress: AnalysisProgress | null) => void;
@@ -31,6 +33,8 @@ export interface AnalysisStore {
   clearCycleHighlight: () => void;
   setHighlight: (nodeIds: Set<string>, edgeIds: Set<string>) => void;
   clearHighlight: () => void;
+  setTreeViewMode: (mode: "dependency" | "filesystem") => void;
+  setTreeOrientation: (orientation: "TB" | "LR") => void;
   reset: () => void;
 
   analyzeGithub: (url: string, branch?: string) => Promise<boolean>;
@@ -50,6 +54,8 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   highlightedEdges: new Set<string>(),
   cycleHighlightNodes: new Set<string>(),
   cycleHighlightEdges: new Set<string>(),
+  treeViewMode: "dependency",
+  treeOrientation: "TB",
 
   setStage: (stage) => set({ stage }),
   setProgress: (progress) => set({ progress }),
@@ -131,6 +137,9 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     });
   },
 
+  setTreeViewMode: (mode) => set({ treeViewMode: mode, selectedNodeId: null }),
+  setTreeOrientation: (orientation) => set({ treeOrientation: orientation }),
+
   reset: () => {
     set({
       stage: "idle",
@@ -145,6 +154,8 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       highlightedEdges: new Set<string>(),
       cycleHighlightNodes: new Set<string>(),
       cycleHighlightEdges: new Set<string>(),
+      treeViewMode: "dependency",
+      treeOrientation: "TB",
     });
   },
 
